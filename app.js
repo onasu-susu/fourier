@@ -350,7 +350,7 @@ function saveToUrl() {
 }
 function loadFromUrl() {
   const q = new URLSearchParams(location.search);
-  KEYS.forEach((k) => { if (q.has(k)) el[k].value = q.get(k).slice(0, 200); });
+  KEYS.forEach((k) => { if (q.has(k)) el[k].value = q.get(k).slice(0, 3000); });
 }
 
 // テストやデバッグ用に、計算の関数を出しておく

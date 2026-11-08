@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>フーリエ級数で音をつくる</title>
+  <meta name="description" content="フーリエ級数の係数 a₀・aₖ・bₖ と L・n を入力して、波形を見ながらその音を聴けるウェブアプリです。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff6f91'/%3E%3Cpath d='M8 32 Q16 6 24 32 T40 32 T56 32' fill='none' stroke='white' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <a class="back" href="https://onasu-susu.github.io/">← マイサイトへ戻る</a>
+    <h1>フーリエ級数で音をつくる</h1>
+    <p class="lead">係数を入れると、波形が見えて、その音が聴けます。</p>
+
+    <div class="formula" aria-label="f(x) = a0/2 + k=1 から n までの a_k cos(kπx/L) + b_k sin(kπx/L) の和">
+      <span class="fx">f(x) = </span>
+      <span class="frac"><span>a<sub>0</sub></span><span>2</span></span>
+      <span class="plus">+</span>
+      <span class="sigma"><span class="top">n</span><span class="mark">Σ</span><span class="bottom">k=1</span></span>
+      <span class="body">( a<sub>k</sub> cos<span class="frac"><span>kπx</span><span>L</span></span> + b<sub>k</sub> sin<span class="frac"><span>kπx</span><span>L</span></span> )</span>
+    </div>
+    <p class="note">x を時間（秒）として聴きます。周期は 2L 秒、基本の音の高さは f₀ = 1/(2L) Hz です。</p>
+
+    <section class="panel" aria-labelledby="h-input">
+      <h2 id="h-input">① 入力</h2>
+
+      <div class="presets" role="group" aria-label="例を入れる">
+        <span class="label">例：</span>
+        <button type="button" data-preset="sine">純音</button>
+        <button type="button" data-preset="square">方形波</button>
+        <button type="button" data-preset="saw">のこぎり波</button>
+        <button type="button" data-preset="triangle">三角波</button>
+        <button type="button" data-preset="pulse">パルス列</button>
+      </div>
+
+      <div class="grid">
+        <label class="field">
+          <span>a<sub>0</sub>（数）</span>
+          <input id="a0" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0">
+        </label>
+        <label class="field">
+          <span>n（項の数 1〜200）</span>
+          <input id="n" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" value="20">
+        </label>
+        <label class="field wide">
+          <span>a<sub>k</sub>（k の式）</span>
+          <input id="ak" type="text" autocomplete="off" spellcheck="false" value="0">
+        </label>
+        <label class="field wide">
+          <span>b<sub>k</sub>（k の式）</span>
+          <input id="bk" type="text" autocomplete="off" spellcheck="false" value="4*mod(k,2)/(k*pi)">
+        </label>
+        <label class="field wide">
+          <span>L（秒。式も書けます）</span>
+          <input id="L" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="1/(2*440)">
+        </label>
+      </div>
+
+      <div class="notes" role="group" aria-label="音の高さから L を入れる">
+        <span class="label">音の高さから L を入れる：</span>
+        <button type="button" data-note="261.63">ド</button>
+        <button type="button" data-note="293.66">レ</button>
+        <button type="button" data-note="329.63">ミ</button>
+        <button type="button" data-note="349.23">ファ</button>
+        <button type="button" data-note="392">ソ</button>
+        <button type="button" data-note="440">ラ</button>
+        <button type="button" data-note="493.88">シ</button>
+        <button type="button" data-note="523.25">高いド</button>
+      </div>
+
+      <p class="readout" id="readout" aria-live="polite"></p>
+      <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+
+      <details class="help">
+        <summary>式の書き方</summary>
+        <ul>
+          <li>k（1 から n まで順に入ります）、n、<code>pi</code>（円周率）、<code>e</code> が使えます。</li>
+          <li><code>+ − * / ^</code> と、カッコ <code>( )</code>。かけ算は <code>2*k</code> のように <code>*</code> を書きます（<code>2k</code> は不可）。</li>
+          <li>関数：<code>sin cos tan sqrt abs exp ln log floor ceil round sign</code>（例：<code>sin(k)</code>）</li>
+          <li><code>mod(a,b)</code>：a を b で割った余り。<code>mod(k,2)</code> は k が奇数なら 1、偶数なら 0 です。</li>
+          <li><code>eq(a,b)</code>：a と b が等しければ 1、ちがえば 0。<code>eq(k,3)</code> は k=3 のときだけ 1 です。</li>
+          <li><code>min(a,b)</code>・<code>max(a,b)</code>。<code>(-1)^k</code> は k が偶数なら 1、奇数なら −1 です。</li>
+          <li>例：<code>1/k</code>、<code>1/k^2</code>、<code>2*(-1)^(k+1)/(k*pi)</code>、<code>0.5^k</code></li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="panel" aria-labelledby="h-sound">
+      <h2 id="h-sound">② 聴く</h2>
+      <div class="player">
+        <button type="button" id="play" class="big">▶ 再生</button>
+        <label class="vol">音量
+          <input id="vol" type="range" min="0" max="100" value="40" aria-label="音量">
+        </label>
+      </div>
+      <p class="note">鳴らしている間に入力を変えると、すぐ音が変わります。音量は小さめから上げてください。</p>
+    </section>
+
+    <section class="panel" aria-labelledby="h-wave">
+      <h2 id="h-wave">③ 波形（x が −2L 〜 2L の 2 周期）</h2>
+      <canvas id="wave" width="640" height="260" role="img" aria-label="入力した係数の波形"></canvas>
+      <p class="note">a₀ は直流成分（平均の高さ）です。耳には聞こえないので、音は変わらず、波形の上下の位置だけが変わります。</p>
+    </section>
+
+    <section class="panel" aria-labelledby="h-spec">
+      <h2 id="h-spec">④ 倍音の強さ（振幅 √(aₖ²+bₖ²)）</h2>
+      <canvas id="spec" width="640" height="200" role="img" aria-label="各倍音の振幅"></canvas>
+      <details class="help">
+        <summary>係数の一覧（k = 1〜n）</summary>
+        <div class="table-wrap"><table id="table"></table></div>
+      </details>
+    </section>
+  </main>
+
+  <footer>© 2026 Akito Yoshii</footer>
+
+  <script src="expr.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
